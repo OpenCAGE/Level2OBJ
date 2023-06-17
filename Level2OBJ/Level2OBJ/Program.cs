@@ -3,6 +3,7 @@ using CATHODE;
 using CATHODE.Scripting;
 using CATHODE.Scripting.Internal;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using static CATHODE.Models;
 
@@ -12,22 +13,33 @@ namespace Level2OBJ
     {
         static Commands commands;
         static RenderableElements reds;
-        static Models models;
-
         static Scene scene;
+
+        const float PI = 3.14159274f;
 
         [STAThread]
         static void Main(string[] args)
         {
-            string level = "G:\\SteamLibrary\\steamapps\\common\\Alien Isolation\\DATA\\ENV\\PRODUCTION\\bsp_torrens";
+            string level = "G:\\SteamLibrary\\steamapps\\common\\Alien Isolation\\DATA\\ENV\\PRODUCTION\\eng_alien_nest";
 
             commands = new Commands(level + "/WORLD/COMMANDS.PAK");
             reds = new RenderableElements(level + "/WORLD/REDS.BIN");
-            models = new Models(level + "/RENDERABLE/LEVEL_MODELS.PAK");
 
-            scene = new Scene();
-            scene.Materials.Add(new Assimp.Material());
-            scene.RootNode = new Node(level);
+            {
+                Models models = new Models(level + "/RENDERABLE/LEVEL_MODELS.PAK");
+
+                //Create scene
+                scene = new Scene();
+                scene.Materials.Add(new Assimp.Material());
+                scene.RootNode = new Node(level);
+
+                //Load models to scene
+                int maxIndex = 0;
+                foreach (RenderableElements.Element element in reds.Entries)
+                    if (element.ModelIndex > maxIndex) maxIndex = element.ModelIndex;
+                for (int i = 0; i < maxIndex; i++)
+                    scene.Meshes.Add(models?.GetAtWriteIndex(i)?.ToMesh());
+            }
 
             ParseComposite(commands.EntryPoints[0], scene.RootNode);
 
@@ -76,15 +88,12 @@ namespace Level2OBJ
                                 cResource resource = (cResource)resourceParam.content;
                                 foreach (ResourceReference resourceRef in resource.value)
                                 {
+                                    //TODO: really, we should load collision meshes rather than renderables?
                                     if (resourceRef.entryType != ResourceType.RENDERABLE_INSTANCE) continue;
                                     for (int i = 0; i < resourceRef.count; i++)
                                     {
                                         RenderableElements.Element renderable = reds.Entries[resourceRef.startIndex + i];
-                                        Models.CS2.Component.LOD.Submesh submesh = models.GetAtWriteIndex(renderable.ModelIndex);
-
-                                        Mesh mesh = submesh.ToMesh();
-                                        scene.Meshes.Add(mesh);
-                                        nodeModel.MeshIndices.Add(scene.Meshes.Count - 1);
+                                        nodeModel.MeshIndices.Add(renderable.ModelIndex);
                                     }
                                 }
                                 break;
@@ -104,7 +113,8 @@ namespace Level2OBJ
                     case DataType.TRANSFORM:
                         cTransform transform = (cTransform)positionParam.content;
                         Matrix4x4 position = Matrix4x4.FromTranslation(new Vector3D(transform.position.X, transform.position.Y, transform.position.Z));
-                        Matrix4x4 rotation = Matrix4x4.FromEulerAnglesXYZ(new Vector3D(transform.rotation.X, transform.rotation.Y, transform.rotation.Z));
+                        //Matrix4x4 rotation = Matrix4x4.FromEulerAnglesXYZ(transform.rotation.X * PI / 180.0f * -1.0f, transform.rotation.Y * PI / 180.0f * -1.0f, transform.rotation.Z * PI / 180.0f * -1.0f);
+                        Matrix4x4 rotation = Matrix4x4.Identity; //TODO: why is the above not correct?
                         Matrix4x4 scale = Matrix4x4.FromScaling(new Vector3D(1, 1, 1));
                         return position * rotation * scale;
                 }
