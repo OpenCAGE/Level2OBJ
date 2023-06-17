@@ -28,12 +28,10 @@ namespace Level2OBJ
             {
                 Models models = new Models(level + "/RENDERABLE/LEVEL_MODELS.PAK");
 
-                //Create scene
                 scene = new Scene();
                 scene.Materials.Add(new Assimp.Material());
                 scene.RootNode = new Node(level);
 
-                //Load models to scene
                 int maxIndex = 0;
                 foreach (RenderableElements.Element element in reds.Entries)
                     if (element.ModelIndex > maxIndex) maxIndex = element.ModelIndex;
@@ -44,11 +42,8 @@ namespace Level2OBJ
             ParseComposite(commands.EntryPoints[0], scene.RootNode);
 
             AssimpContext exp = new AssimpContext();
-            exp.ExportFile(scene, "out.fbx", "fbx");
+            exp.ExportFile(scene, "out.obj", "obj");
             exp.Dispose();
-
-            Console.WriteLine("Done!");
-            Console.ReadLine();
         }
 
         static void ParseComposite(Composite composite, Node node)
