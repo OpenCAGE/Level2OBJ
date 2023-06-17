@@ -20,7 +20,7 @@ namespace Level2OBJ
         [STAThread]
         static void Main(string[] args)
         {
-            string level = "G:\\SteamLibrary\\steamapps\\common\\Alien Isolation\\DATA\\ENV\\PRODUCTION\\eng_alien_nest";
+            string level = "G:\\SteamLibrary\\steamapps\\common\\Alien Isolation\\DATA\\ENV\\PRODUCTION\\bsp_torrens";
 
             commands = new Commands(level + "/WORLD/COMMANDS.PAK");
             reds = new RenderableElements(level + "/WORLD/REDS.BIN");
@@ -91,7 +91,7 @@ namespace Level2OBJ
                                     if (resourceRef.entryType != ResourceType.RENDERABLE_INSTANCE) continue;
 
                                     Node nodeModelPart = new Node();
-                                    nodeModelPart.Transform = ToMatrix(resourceRef.position, resourceRef.rotation);
+                                    //nodeModelPart.Transform = ToMatrix(resourceRef.position, resourceRef.rotation);
                                     nodeModel.Children.Add(nodeModelPart);
 
                                     for (int i = 0; i < resourceRef.count; i++)
@@ -125,7 +125,7 @@ namespace Level2OBJ
         static Matrix4x4 ToMatrix(System.Numerics.Vector3 position, System.Numerics.Vector3 rotation)
         {
             Matrix4x4 positionM = Matrix4x4.FromTranslation(new Vector3D(position.X, position.Y, position.Z));
-            Matrix4x4 rotationM = Matrix4x4.FromEulerAnglesXYZ(PI * rotation.X / 180.0f, PI * rotation.Y / 180.0f, PI * rotation.Z / 180.0f);
+            Matrix4x4 rotationM = Matrix4x4.FromEulerAnglesXYZ(PI * rotation.X / 180.0f * -1.0f, PI * rotation.Y / 180.0f * -1.0f, PI * rotation.Z / 180.0f * -1.0f);
             Matrix4x4 scaleM = Matrix4x4.FromScaling(new Vector3D(1, 1, 1));
             return scaleM * rotationM * positionM;
         }
