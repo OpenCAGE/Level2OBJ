@@ -15,18 +15,22 @@ namespace Level2OBJ
         [STAThread]
         static void Main(string[] args)
         {
-            string level = "G:\\SteamLibrary\\steamapps\\common\\Alien Isolation\\DATA\\ENV\\PRODUCTION\\FRONTEND";
+            string level = "G:\\SteamLibrary\\steamapps\\common\\Alien Isolation\\DATA\\ENV\\PRODUCTION\\bsp_torrens";
 
             commands = new Commands(level + "/WORLD/COMMANDS.PAK");
             reds = new RenderableElements(level + "/WORLD/REDS.BIN");
             models = new Models(level + "/RENDERABLE/LEVEL_MODELS.PAK");
 
             ParseComposite(commands.EntryPoints[0], Matrix4x4.Identity);
+
+            Console.WriteLine("Done!");
+            Console.ReadLine();
         }
 
         static void ParseComposite(Composite composite, Matrix4x4 stackedTransform)
         {
             if (composite == null) return;
+            Console.WriteLine("Parsing: " + composite.name);
 
             foreach (OverrideEntity ovrride in composite.overrides)
             {
@@ -34,21 +38,38 @@ namespace Level2OBJ
             }
             foreach (FunctionEntity function in composite.functions)
             {
-                if (CommandsUtils.GetFunctionType(function.function) == FunctionType.ModelReference)
-                {
-                    //Store model info
-                    Matrix4x4 transform = Matrix4x4.Add(stackedTransform, GetMatrix(function)); //need to respect overrides here
-                    foreach (ResourceReference resource in function.resources)
-                    {
-                        if (resource.entryType != ResourceType.RENDERABLE_INSTANCE) continue;
-
-                    }
-                }
-                else if (!CommandsUtils.FunctionTypeExists(function.function))
+                if (!CommandsUtils.FunctionTypeExists(function.function))
                 {
                     //Continue down the hierarchy
                     Matrix4x4 transform = Matrix4x4.Add(stackedTransform, GetMatrix(function)); //need to respect overrides here
                     ParseComposite(commands.GetComposite(function.function), transform);
+                }
+                else if (CommandsUtils.GetFunctionType(function.function) == FunctionType.ModelReference)
+                {
+                    //Store model info
+                    Matrix4x4 transform = Matrix4x4.Add(stackedTransform, GetMatrix(function)); //need to respect overrides here
+                    Parameter resourceParam = function.GetParameter("resource");
+                    if (resourceParam != null && resourceParam.content != null)
+                    {
+                        switch (resourceParam.content.dataType)
+                        {
+                            case DataType.RESOURCE:
+                                cResource resource = (cResource)resourceParam.content;
+                                foreach (ResourceReference resourceRef in resource.value)
+                                {
+                                    if (resourceRef.entryType != ResourceType.RENDERABLE_INSTANCE) continue;
+                                    for (int i = 0; i < resourceRef.count; i++)
+                                    {
+                                        RenderableElements.Element renderable = reds.Entries[resourceRef.startIndex + i];
+                                        Models.CS2.Component.LOD.Submesh mesh = models.GetAtWriteIndex(renderable.ModelIndex);
+
+                                        Console.WriteLine("\tFound model: " + models.FindModelForSubmesh(mesh)?.Name + " (" + transform.ToString() + ")");
+                                        break;
+                                    }
+                                }
+                                break;
+                        }
+                    }
                 }
             }
         }
@@ -56,13 +77,16 @@ namespace Level2OBJ
         static Matrix4x4 GetMatrix(Entity entity)
         {
             Parameter positionParam = entity.GetParameter("position");
-            switch (positionParam.content.dataType)
+            if (positionParam != null && positionParam.content != null)
             {
-                case DataType.TRANSFORM:
-                    cTransform transformParam = (cTransform)positionParam.content;
-                    Matrix4x4 position = Matrix4x4.CreateTranslation(transformParam.position);
-                    Matrix4x4 rotation = Matrix4x4.CreateFromYawPitchRoll(transformParam.rotation.X, transformParam.rotation.Y, transformParam.rotation.Z); //todo: this may be flipped
-                    return Matrix4x4.Add(position, rotation);
+                switch (positionParam.content.dataType)
+                {
+                    case DataType.TRANSFORM:
+                        cTransform transform = (cTransform)positionParam.content;
+                        Matrix4x4 position = Matrix4x4.CreateTranslation(transform.position);
+                        Matrix4x4 rotation = Matrix4x4.CreateFromYawPitchRoll(transform.rotation.X, transform.rotation.Y, transform.rotation.Z); //todo: this may be flipped
+                        return Matrix4x4.Add(position, rotation);
+                }
             }
             return Matrix4x4.Identity;
         }
