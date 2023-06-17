@@ -5,7 +5,7 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{B7169DA0-4DD8-47AD-8CDD-582BD42B6AA4}</ProjectGuid>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Exe</OutputType>
     <RootNamespace>Level2OBJ</RootNamespace>
     <AssemblyName>Level2OBJ</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
@@ -37,6 +37,9 @@
   <PropertyGroup>
     <ApplicationIcon>icon.ico</ApplicationIcon>
   </PropertyGroup>
+  <PropertyGroup>
+    <StartupObject />
+  </PropertyGroup>
   <ItemGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <Reference Include="CathodeLib">
       <HintPath>..\..\CathodeLib\CathodeLib\bin\Debug\netstandard2.0\CathodeLib.dll</HintPath>
@@ -65,13 +68,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Level2OBJ.cs">
-      <SubType>Form</SubType>
-    </Compile>
-    <Compile Include="Level2OBJ.designer.cs">
-      <DependentUpon>Level2OBJ.cs</DependentUpon>
-    </Compile>
-    <Compile Include="PatchManager.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
@@ -79,10 +75,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="SettingsManager.cs" />
-    <EmbeddedResource Include="Level2OBJ.resx">
-      <DependentUpon>Level2OBJ.cs</DependentUpon>
-    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <SubType>Designer</SubType>
@@ -98,14 +90,6 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <EmbeddedResource Include="UI_Mods\GAMEOVERMENU.GFX" />
-    <EmbeddedResource Include="UI_Mods\GAMEOVERMENU_MOD.GFX" />
-    <EmbeddedResource Include="UI_Mods\LOADINGSCREEN.GFX" />
-    <EmbeddedResource Include="UI_Mods\LOADINGSCREEN_MOD.GFX" />
-    <EmbeddedResource Include="UI_Mods\NEWFRONTENDMENU.GFX" />
-    <EmbeddedResource Include="UI_Mods\NEWFRONTENDMENU_MOD.GFX" />
-    <EmbeddedResource Include="UI_Mods\PAUSEMENU.GFX" />
-    <EmbeddedResource Include="UI_Mods\PAUSEMENU_MOD.GFX" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

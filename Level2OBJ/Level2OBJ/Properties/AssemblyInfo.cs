@@ -5,11 +5,11 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Launch Game")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("Level2OBJ")]
+[assembly: AssemblyDescription("A command-line tool to convert Alien: Isolation levels to an OBJ model.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Matt Filer")]
-[assembly: AssemblyProduct("OpenCAGE: Launch Game")]
+[assembly: AssemblyProduct("Level2OBJ")]
 [assembly: AssemblyCopyright("Copyright © Matt Filer 2023")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
