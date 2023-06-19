@@ -55,6 +55,7 @@ namespace Level2OBJ
         static void ParseComposite(Composite composite, Node node, List<OverrideEntity> overrides)
         {
             if (composite == null) return;
+            List<Entity> entities = composite.GetEntities();
             
             //Compile all appropriate overrides, and keep the hierarchies trimmed so that index zero is accurate to this composite
             List<OverrideEntity> trimmedOverrides = new List<OverrideEntity>();
@@ -95,6 +96,10 @@ namespace Level2OBJ
                 //Parse model data
                 else if (CommandsUtils.GetFunctionType(function.function) == FunctionType.ModelReference)
                 {
+                    //TEMP: Instead of parsing all logic, lets just consider models that connect to other entities to be scripted.
+                    if (function.childLinks.Count != 0) continue;
+                    if (entities.FirstOrDefault(o => o.childLinks.FindAll(x => x.childID == function.shortGUID).Count != 0) != null) continue;
+
                     //Work out our position, accounting for overrides
                     OverrideEntity ovrride = trimmedOverrides.FirstOrDefault(o => o.connectedEntity.hierarchy.Count == 1 && o.connectedEntity.hierarchy[0] == function.shortGUID);
                     Matrix4x4 transform = GetEntityMatrix(ovrride);
@@ -104,6 +109,7 @@ namespace Level2OBJ
                     nodeModel.Transform = transform;
                     node.Children.Add(nodeModel);
 
+                    //TODO: do we want to consider resources attached to the entity too? (YES)
                     Parameter resourceParam = function.GetParameter("resource");
                     if (resourceParam != null && resourceParam.content != null)
                     {
@@ -111,6 +117,12 @@ namespace Level2OBJ
                         {
                             case DataType.RESOURCE:
                                 cResource resource = (cResource)resourceParam.content;
+
+                                //TEMP: While we can't parse collision mappings, we rely on both bits of data to form a high-poly collision mesh.
+                                if (resource.value.FirstOrDefault(o => o.entryType == ResourceType.COLLISION_MAPPING) == null ||
+                                    resource.value.FirstOrDefault(o => o.entryType == ResourceType.RENDERABLE_INSTANCE) == null)
+                                    continue;
+
                                 foreach (ResourceReference resourceRef in resource.value)
                                 {
                                     Node nodeModelPart = new Node();
