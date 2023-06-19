@@ -5,6 +5,7 @@ using CATHODE.Scripting.Internal;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using static CATHODE.Models;
 
 namespace Level2OBJ
@@ -22,9 +23,11 @@ namespace Level2OBJ
         {
             string level = "G:\\SteamLibrary\\steamapps\\common\\Alien Isolation\\DATA\\ENV\\PRODUCTION\\bsp_torrens";
 
+            Console.WriteLine("Loading WORLD");
             commands = new Commands(level + "/WORLD/COMMANDS.PAK");
             reds = new RenderableElements(level + "/WORLD/REDS.BIN");
 
+            Console.WriteLine("Loading RENDERABLE");
             {
                 Models models = new Models(level + "/RENDERABLE/LEVEL_MODELS.PAK");
 
@@ -32,6 +35,7 @@ namespace Level2OBJ
                 scene.Materials.Add(new Assimp.Material());
                 scene.RootNode = new Node(level);
 
+                //Add all models from the level to the scene
                 int maxIndex = 0;
                 foreach (RenderableElements.Element element in reds.Entries)
                     if (element.ModelIndex > maxIndex) maxIndex = element.ModelIndex;
@@ -39,39 +43,65 @@ namespace Level2OBJ
                     scene.Meshes.Add(models?.GetAtWriteIndex(i)?.ToMesh());
             }
 
-            ParseComposite(commands.EntryPoints[0], scene.RootNode);
+            Console.WriteLine("Parsing COMMANDS");
+            ParseComposite(commands.EntryPoints[0], scene.RootNode, new List<OverrideEntity>());
 
+            Console.WriteLine("Exporting");
             AssimpContext exp = new AssimpContext();
-            exp.ExportFile(scene, "out.obj", "obj");
+            exp.ExportFile(scene, "out.obj", "obj"); //TODO: this is super slow
             exp.Dispose();
         }
 
-        static void ParseComposite(Composite composite, Node node)
+        static void ParseComposite(Composite composite, Node node, List<OverrideEntity> overrides)
         {
             if (composite == null) return;
-
-            foreach (OverrideEntity ovrride in composite.overrides)
+            
+            //Compile all appropriate overrides, and keep the hierarchies trimmed so that index zero is accurate to this composite
+            List<OverrideEntity> trimmedOverrides = new List<OverrideEntity>();
+            for (int i = 0; i < overrides.Count; i++)
             {
-                //Store all overrides here so that we respect them as we continue down the hierarchy
+                overrides[i].connectedEntity.hierarchy.RemoveAt(0);
+                if (overrides[i].connectedEntity.hierarchy.Count != 0)
+                    trimmedOverrides.Add(overrides[i]);
             }
+            trimmedOverrides.AddRange(composite.overrides);
+            overrides = trimmedOverrides;
 
+            //Parse all functions in this composite & handle them appropriately
             foreach (FunctionEntity function in composite.functions)
             {
+                //Jump through to the next composite
                 if (!CommandsUtils.FunctionTypeExists(function.function))
                 {
                     Composite compositeNext = commands.GetComposite(function.function);
                     if (compositeNext != null)
                     {
+                        //Find all overrides that are appropriate to take through to the next composite
+                        List<OverrideEntity> overridesNext = trimmedOverrides.FindAll(o => o.connectedEntity.hierarchy[0] == function.shortGUID);
+
+                        //Work out our position, accounting for overrides
+                        OverrideEntity ovrride = trimmedOverrides.FirstOrDefault(o => o.connectedEntity.hierarchy.Count == 1 && o.connectedEntity.hierarchy[0] == function.shortGUID);
+                        Matrix4x4 transform = GetEntityMatrix(ovrride);
+                        if (transform == Matrix4x4.Identity) transform = GetEntityMatrix(function);
+
+                        //Update scene & continue through to next composite
                         Node nodeNext = new Node(compositeNext.name);
-                        nodeNext.Transform = GetEntityMatrix(function); //need to respect overrides here
+                        nodeNext.Transform = transform;
                         node.Children.Add(nodeNext);
-                        ParseComposite(compositeNext, nodeNext);
+                        ParseComposite(compositeNext, nodeNext, overridesNext);
                     }
                 }
+
+                //Parse model data
                 else if (CommandsUtils.GetFunctionType(function.function) == FunctionType.ModelReference)
                 {
+                    //Work out our position, accounting for overrides
+                    OverrideEntity ovrride = trimmedOverrides.FirstOrDefault(o => o.connectedEntity.hierarchy.Count == 1 && o.connectedEntity.hierarchy[0] == function.shortGUID);
+                    Matrix4x4 transform = GetEntityMatrix(ovrride);
+                    if (transform == Matrix4x4.Identity) transform = GetEntityMatrix(function);
+
                     Node nodeModel = new Node();
-                    nodeModel.Transform = GetEntityMatrix(function); //need to respect overrides here
+                    nodeModel.Transform = transform;
                     node.Children.Add(nodeModel);
 
                     Parameter resourceParam = function.GetParameter("resource");
@@ -83,8 +113,6 @@ namespace Level2OBJ
                                 cResource resource = (cResource)resourceParam.content;
                                 foreach (ResourceReference resourceRef in resource.value)
                                 {
-                                    if (resourceRef.entryType != ResourceType.RENDERABLE_INSTANCE) continue;
-
                                     Node nodeModelPart = new Node();
                                     //nodeModelPart.Transform = ToMatrix(resourceRef.position, resourceRef.rotation);
                                     nodeModel.Children.Add(nodeModelPart);
@@ -92,7 +120,16 @@ namespace Level2OBJ
                                     for (int i = 0; i < resourceRef.count; i++)
                                     {
                                         RenderableElements.Element renderable = reds.Entries[resourceRef.startIndex + i];
-                                        nodeModelPart.MeshIndices.Add(renderable.ModelIndex);
+
+                                        switch (resourceRef.entryType)
+                                        {
+                                            case ResourceType.RENDERABLE_INSTANCE:
+                                                nodeModelPart.MeshIndices.Add(renderable.ModelIndex);
+                                                break;
+                                            case ResourceType.COLLISION_MAPPING:
+                                                //TODO: we should use this data rather than mesh data to reduce overhead
+                                                break;
+                                        }
                                     }
                                 }
                                 break;
@@ -104,6 +141,8 @@ namespace Level2OBJ
 
         static Matrix4x4 GetEntityMatrix(Entity entity)
         {
+            if (entity == null) return Matrix4x4.Identity;
+
             Parameter positionParam = entity.GetParameter("position");
             if (positionParam != null && positionParam.content != null)
             {
@@ -114,6 +153,7 @@ namespace Level2OBJ
                         return ToMatrix(transform.position, transform.rotation);
                 }
             }
+
             return Matrix4x4.Identity;
         }
 
